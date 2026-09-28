@@ -74,15 +74,12 @@ class OpponifyService(
         val gameId = if(o.timeType==TimeType.EXACT) {
             val id=UUID.randomUUID(); val start=o.startAt ?: throw ApiException(409,"EXACT_TIME_REQUIRED","Cannot schedule without exact time.")
             val end=start.plus(defaultDuration)
-            val creatorTeamId = o.creatorTeamId
             val creatorUsers = if (creatorUserId != null) listOf(creatorUserId) else teamUsers(creatorTeamId ?: throw ApiException(422,"CREATOR_REQUIRED","Opportunity creator is missing."))
             if(creatorUsers.any { games.hasOverlap(it,start,end) }) throw ApiException(409,"SCHEDULE_OVERLAP","A creator participant has an overlapping scheduled commitment.")
             val requesterTeam=request["requester_team_id"] as UUID?
             val requesterUsers=if(requesterUser!=null) listOf(requesterUser) else teamUsers(requesterTeam!!)
             if(requesterUsers.any{games.hasOverlap(it,start,end)}) throw ApiException(409,"SCHEDULE_OVERLAP","A participant has an overlapping scheduled commitment.")
             games.create(id,o.id,start,defaultDuration,ZoneId.of("UTC"))
-            val creatorUserId = o.creatorUserId
-            val creatorTeamId = o.creatorTeamId
             if (creatorUserId != null) games.addParticipant(id,creatorUserId,null)
             else games.addParticipant(id,null,creatorTeamId ?: throw ApiException(422,"CREATOR_REQUIRED","Opportunity creator is missing."))
             if(requesterUser!=null) games.addParticipant(id,requesterUser,null) else games.addParticipant(id,null,requesterTeam)

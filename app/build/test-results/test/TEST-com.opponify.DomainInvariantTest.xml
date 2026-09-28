@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.opponify.DomainInvariantTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-09-28T04:19:03.012Z" hostname="MARTIN" time="0.125">
+  <properties/>
+  <testcase name="allLaunchSportsRemainExplicitlyDefined()" classname="com.opponify.DomainInvariantTest" time="0.059"/>
+  <testcase name="scheduledGameOverlapUsesActualIntervalOnly()" classname="com.opponify.DomainInvariantTest" time="0.008"/>
+  <testcase name="minimumCannotExceedTarget()" classname="com.opponify.DomainInvariantTest" time="0.033"/>
+  <testcase name="skillLevelsRemainExactlyThree()" classname="com.opponify.DomainInvariantTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
