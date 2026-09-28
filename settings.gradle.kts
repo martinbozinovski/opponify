@@ -1,0 +1,19 @@
+rootProject.name = "opponify-backend"
+include(
+    "app",
+    "modules:identity",
+    "modules:player",
+    "modules:team",
+    "modules:sport",
+    "modules:facility",
+    "modules:opportunity",
+    "modules:participation",
+    "modules:game",
+    "modules:scheduling",
+    "modules:attendance",
+    "modules:results",
+    "modules:history",
+    "modules:trust",
+    "modules:moderation",
+    "modules:notification"
+)

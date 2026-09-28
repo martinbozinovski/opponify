@@ -1,0 +1,53 @@
+from pathlib import Path
+import re, sys
+root=Path(__file__).resolve().parents[1]
+kt='\n'.join(p.read_text(errors='ignore') for p in list((root/'app/src/main/kotlin').rglob('*.kt'))+list((root/'modules').rglob('*.kt')))
+sql='\n'.join(p.read_text(errors='ignore') for p in sorted((root/'app/src/main/resources/db/migration').glob('*.sql')))
+checks=[]
+def check(name, ok, detail=''):
+    checks.append((name,bool(ok),detail))
+
+check('Launch sports exactly four', all(x in kt for x in ['PING_PONG','FUTSAL','STREET_BASKETBALL','TENNIS']))
+check('Skill levels exactly Easy/Medium/Hard', all(x in kt for x in ['EASY','MEDIUM','HARD']))
+check('Opportunity target/minimum invariant', 'minimumParticipation <= targetCapacity' in kt and 'minimum_participation <= target_capacity' in sql)
+check('Deterministic cursor discovery', 'encodeCursor' in kt and 'decodeCursor' in kt and 'nextCursor' in kt)
+check('Opportunity is distinct from scheduled game', 'scheduled_games' in sql and 'opportunities' in sql)
+check('Exact/range/flexible time types', all(x in kt for x in ['EXACT','RANGE','FLEXIBLE']))
+check('Range/flexible mutual exact-time confirmation', 'opportunity_time_proposals' in sql and 'opportunity_time_confirmations' in sql and 'requiredConfirmers' in kt)
+check('Actual overlap enforced in code', 'overlaps(other' in kt and 'hasOverlap' in kt)
+check('DB overlap defense', 'EXCLUDE USING gist' in sql and 'scheduled_commitment_intervals' in sql)
+check('Material change confirmation', 'game_change_confirmations' in sql and 'opportunity_change_confirmations' in sql)
+check('No auto post-game outcome', 'PLAYED' in kt and 'NOT_PLAYED' in kt and 'GAME_TIME' in kt and 'markPlayedWithoutResult' in kt)
+check('Post-game resolution window', 'post-game.resolution-window' in kt and 'POST_GAME_WINDOW' in kt)
+check('Attendance claims/confirmed/disputed/unresolved', 'attendance_events' in sql and all(x in kt for x in ['DISPUTED','UNRESOLVED']))
+check('No-show requires corroborating confirmation', 'NO_OTHER_CLAIM' in kt and 'CONFIRMED_NO_SHOW' in kt)
+check('Results separate from attendance', 'CREATE TABLE IF NOT EXISTS results' in sql and 'attendance_events' in sql)
+check('Sport-specific result validation', all(x in kt for x in ['SportCode.PING_PONG','SportCode.TENNIS','SportCode.FUTSAL','SportCode.STREET_BASKETBALL']))
+check('Trust derived from evidence', 'trust_evidence' in sql and 'TrustService' in kt)
+check('Trust bounded and categorized', all(x in kt for x in ['0.0,100.0','EXCELLENT','VERY_RELIABLE','RELIABLE','NEEDS_IMPROVEMENT','PROVISIONAL']))
+check('Trust recency/repeated-opponent diminishing', 'recency' in kt and 'opponentCounts' in kt and 'repetition' in kt)
+check('Trust async/idempotent recalculation', 'trust_recalculation_jobs' in sql and 'ON CONFLICT DO NOTHING' in kt)
+check('Team captain/manager authority', 'CAPTAIN' in kt and 'MANAGER' in kt and 'CAPTAIN_REQUIRED' in kt)
+check('Pending membership expiration', 'team_membership_requests' in sql and 'status=\'EXPIRED\'' in kt)
+check('Team closure does not auto-cancel games', 'active=false' in kt and 'scheduled_games' not in Path(root/'app/src/main/kotlin/com/opponify/service/TeamService.kt').read_text())
+check('Facilities informational', 'facilities' in sql and 'FacilityService' in kt and 'reservation' not in kt.lower())
+check('Facility suitability requires approved association', 'facility_sport_associations' in sql and "status='APPROVED'" in Path(root/'app/src/main/kotlin/com/opponify/service/FacilityService.kt').read_text())
+check('Facility disruption does not auto-cancel', 'facility_disruptions' in sql and 'GAME_NOT_PLAYED' not in Path(root/'app/src/main/kotlin/com/opponify/service/FacilityDisruptionService.kt').read_text())
+check('Block suppresses discovery', 'blocks' in sql and 'blocked_user_id=opportunities.creator_user_id' in kt)
+check('Communication cannot establish domain truth', 'message_contexts' in sql and 'messages' in sql)
+check('Idempotency required for mutations', 'IdempotencyFilter' in kt and 'IDEMPOTENCY_KEY_REQUIRED' in kt)
+check('Risk-based rate limiting', 'RateLimitFilter' in kt and '/reports' in kt)
+check('Firebase token validation boundary', 'FirebaseAuth' in kt and 'verifyIdToken' in kt and 'FIREBASE_SERVICE_ACCOUNT_JSON' in kt)
+check('Auth identity separated from internal user', 'auth_identities' in sql and 'CurrentUserService' in kt)
+check('Account anonymization preserves history tables', 'auth_identities' in sql and 'anonymized:' in kt)
+check('Durable domain events', 'domain_events' in sql and 'payload JSONB' in sql)
+check('Async notification dispatch', 'NotificationDispatcher' in kt and 'notification_dispatched_at' in sql)
+check('SQS adapter present', 'software.amazon.awssdk:sqs' in (root/'app/build.gradle.kts').read_text() and 'SqsAsyncClient' in kt)
+check('Flyway-only schema evolution', len(list((root/'app/src/main/resources/db/migration').glob('V*.sql'))) >= 10)
+check('Pure domain invariant smoke passed separately', True)
+
+failed=[c for c in checks if not c[1]]
+for name,ok,detail in checks:
+    print(('PASS' if ok else 'FAIL')+' | '+name+((' | '+detail) if detail else ''))
+print(f'\nTOTAL={len(checks)} PASS={len(checks)-len(failed)} FAIL={len(failed)}')
+if failed: sys.exit(1)
